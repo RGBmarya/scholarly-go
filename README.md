@@ -1,50 +1,106 @@
-# Welcome to your Expo app 👋
+# Scholarly
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A modern research paper discovery app built with React Native and Expo. Browse, bookmark, and chat with research papers from arXiv.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Paper Discovery**: Swipe through research papers with a Tinder-like interface
+- **Smart Search**: Search papers with filters and categories
+- **Interactive Gestures**: 
+  - Swipe right to bookmark
+  - Swipe left to chat
+  - Double tap to like
+  - Swipe up/down to navigate
+- **Library Management**: Save and organize papers you're interested in
+- **Chat Interface**: Discuss papers with an AI assistant
+- **ArXiv Integration**: Real-time paper fetching from arXiv's API
 
-   ```bash
-   npm install
-   ```
+## Tech Stack
 
-2. Start the app
+- React Native
+- Expo Router
+- React Native Reanimated
+- React Native Gesture Handler
+- Zustand (State Management)
+- ArXiv API
 
-   ```bash
-    npx expo start
-   ```
+## Getting Started
 
-In the output, you'll find options to open the app in a
+### Prerequisites
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+- Node.js (v16 or newer)
+- npm or yarn
+- Expo Go app on your mobile device
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Installation
 
-## Get a fresh project
-
-When you're ready, run:
-
+1. Clone the repository
 ```bash
-npm run reset-project
+git clone https://github.com/yourusername/scholarly-go.git
+cd scholarly-go
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+2. Install dependencies
+```bash
+npm install
+```
 
-## Learn more
+3. Start the development server
+```bash
+npx expo start
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+4. Scan the QR code with Expo Go (Android) or Camera app (iOS)
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Project Structure
 
-## Join the community
+```
+scholarly-go/
+├── app/                    # Main app directory (Expo Router)
+│   ├── (tabs)/            # Tab-based navigation
+│   │   ├── index.tsx      # Search tab
+│   │   ├── explore.tsx    # Paper discovery feed
+│   │   └── library.tsx    # Bookmarked papers
+│   ├── (chat)/            # Chat interface
+│   └── (paper)/           # Paper details
+├── components/            # Reusable components
+├── services/             # External services (ArXiv API)
+├── store/               # State management
+└── types/              # TypeScript definitions
+```
 
-Join our community of developers creating universal apps.
+## Features in Detail
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Paper Discovery Feed
+- Gesture-based interaction for intuitive paper browsing
+- Real-time paper fetching from arXiv
+- Category-based filtering
+- Search functionality
+
+### Library Management
+- Bookmark papers for later reference
+- Remove papers from library
+- Quick access to paper details and links
+
+### Chat Interface
+- Discuss papers with AI
+- Get explanations and insights
+- Ask questions about the research
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
+
+## Acknowledgments
+
+- ArXiv API for providing access to research papers
+- Expo team for the amazing development platform
+- React Native community for the robust ecosystem
