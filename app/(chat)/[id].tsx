@@ -1,6 +1,8 @@
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Keyboard } from 'react-native';
+import { useLocalSearchParams, Stack } from 'expo-router';
+import { useState, useRef, useEffect } from 'react';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 
 interface Message {
   id: string;
@@ -10,6 +12,7 @@ interface Message {
 
 export default function ChatScreen() {
   const { id, title } = useLocalSearchParams<{ id: string; title: string }>();
+  const scrollViewRef = useRef<ScrollView>(null);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -18,6 +21,23 @@ export default function ChatScreen() {
     },
   ]);
   const [inputText, setInputText] = useState('');
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const keyboardWillShow = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const keyboardWillHide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setKeyboardVisible(false)
+    );
+
+    return () => {
+      keyboardWillShow.remove();
+      keyboardWillHide.remove();
+    };
+  }, []);
 
   const handleSend = () => {
     if (!inputText.trim()) return;
@@ -40,16 +60,35 @@ export default function ChatScreen() {
         sender: 'ai',
       };
       setMessages(prev => [...prev, aiMessage]);
+      // Scroll to bottom after new message
+      scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 1000);
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={2}>{title}</Text>
-      </View>
-      
-      <ScrollView style={styles.messagesContainer}>
+      <Stack.Screen 
+        options={{
+          headerShown: false,
+          animation: 'slide_from_right',
+        }} 
+      />
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.title} numberOfLines={2}>{title}</Text>
+        </View>
+      </SafeAreaView>
+
+      <ScrollView 
+        ref={scrollViewRef}
+        style={styles.messagesContainer}
+        contentContainerStyle={[
+          styles.messagesContent,
+          { paddingBottom: 100 }
+        ]}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
+      >
         {messages.map(message => (
           <View 
             key={message.id} 
@@ -68,21 +107,39 @@ export default function ChatScreen() {
         ))}
       </ScrollView>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          value={inputText}
-          onChangeText={setInputText}
-          placeholder="Ask a question..."
-          multiline
-        />
-        <TouchableOpacity 
-          style={styles.sendButton}
-          onPress={handleSend}
-        >
-          <Text style={styles.sendButtonText}>Send</Text>
-        </TouchableOpacity>
-      </View>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        style={[
+          styles.keyboardAvoid,
+          { marginBottom: keyboardVisible ? 0 : 0 }
+        ]}
+      >
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={[styles.input]}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Ask a question..."
+            multiline={false}
+            keyboardAppearance="dark"
+          />
+          <TouchableOpacity 
+            style={[
+              styles.sendButton,
+              !inputText.trim() && styles.sendButtonDisabled
+            ]}
+            onPress={handleSend}
+            disabled={!inputText.trim()}
+          >
+            <IconSymbol 
+              name="arrow.up.circle.fill" 
+              size={32} 
+              color={inputText.trim() ? '#007AFF' : '#C7C7CC'} 
+            />
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -90,7 +147,11 @@ export default function ChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'white',
+  },
+  safeArea: {
+    backgroundColor: 'white',
+    marginTop: -50,
   },
   header: {
     padding: 20,
@@ -105,7 +166,11 @@ const styles = StyleSheet.create({
   },
   messagesContainer: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  messagesContent: {
     padding: 15,
+    paddingBottom: 20,
   },
   messageBox: {
     maxWidth: '80%',
@@ -130,31 +195,43 @@ const styles = StyleSheet.create({
   aiMessageText: {
     color: '#333',
   },
+  keyboardAvoid: {
+    backgroundColor: 'white',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+  },
   inputContainer: {
     flexDirection: 'row',
     padding: 15,
     backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    alignItems: 'flex-end',
   },
   input: {
     flex: 1,
     backgroundColor: '#f0f0f0',
     borderRadius: 20,
     paddingHorizontal: 15,
-    paddingVertical: 10,
+    height: 40,
     marginRight: 10,
     fontSize: 16,
   },
   sendButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 20,
-    paddingHorizontal: 20,
     justifyContent: 'center',
+    alignItems: 'center',
+    width: 32,
+    height: 32,
+    marginBottom: 4,
   },
-  sendButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
+  sendButtonDisabled: {
+    opacity: 0.5,
   },
 }); 
