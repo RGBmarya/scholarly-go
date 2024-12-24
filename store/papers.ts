@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase/supabase';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
-interface Paper {
+export interface Paper {
   id: string;
   title: string;
   abstract: string;
@@ -47,6 +47,7 @@ interface PapersState {
   addLike: (paper: Paper) => Promise<void>;
   removeLike: (arxivId: string) => Promise<void>;
   isLiked: (arxivId: string) => Promise<boolean>;
+  fetchTrendingPapers: () => Promise<{ weeklyHot: Paper[]; allTimePopular: Paper[] }>;
 }
 
 export const usePapersStore = create<PapersState>((set, get) => ({
@@ -455,6 +456,72 @@ export const usePapersStore = create<PapersState>((set, get) => ({
     } catch (error) {
       console.error('Error checking like status:', error);
       return false;
+    }
+  },
+
+  fetchTrendingPapers: async () => {
+    try {
+      // Fetch papers liked in the past week
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      const { data: weeklyHot, error: weeklyError } = await supabase
+        .from('papers')
+        .select('*')
+        .gte('likes', 1)
+        .gte('created_at', oneWeekAgo.toISOString())
+        .order('likes', { ascending: false })
+        .limit(10);
+
+      if (weeklyError) throw weeklyError;
+
+      // Fetch all-time most liked papers
+      const { data: allTimePopular, error: allTimeError } = await supabase
+        .from('papers')
+        .select('*')
+        .gte('likes', 1)
+        .order('likes', { ascending: false })
+        .limit(10);
+
+      if (allTimeError) throw allTimeError;
+
+      return {
+        weeklyHot: weeklyHot?.map(paper => ({
+          id: paper.id,
+          title: paper.title,
+          abstract: paper.abstract,
+          authors: paper.authors,
+          year: paper.year,
+          arxiv_id: paper.arxiv_id,
+          categories: paper.categories,
+          likes: paper.likes,
+          bookmarks: paper.bookmarks,
+          links: {
+            pdf: paper.pdf_url,
+            html: paper.html_url,
+          },
+          doi: paper.doi,
+        })) || [],
+        allTimePopular: allTimePopular?.map(paper => ({
+          id: paper.id,
+          title: paper.title,
+          abstract: paper.abstract,
+          authors: paper.authors,
+          year: paper.year,
+          arxiv_id: paper.arxiv_id,
+          categories: paper.categories,
+          likes: paper.likes,
+          bookmarks: paper.bookmarks,
+          links: {
+            pdf: paper.pdf_url,
+            html: paper.html_url,
+          },
+          doi: paper.doi,
+        })) || [],
+      };
+    } catch (error) {
+      console.error('Error fetching trending papers:', error);
+      return { weeklyHot: [], allTimePopular: [] };
     }
   },
 })); 

@@ -13,7 +13,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hello! I'm your AI assistant. Ask me anything about "${title}"`,
+      text: `Hello! I'm your (future) AI assistant. Soon, you'll be able to ask me anything about "${title}"`,
       sender: 'ai',
     },
   ]);
