@@ -101,7 +101,7 @@ function PaperCard({
   onVerticalSwipe
 }: { 
   paper: ArxivPaper; 
-  onLike: (id: string) => void;
+  onLike: (paper: ArxivPaper) => void;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
   isVisible: boolean;
@@ -125,8 +125,8 @@ function PaperCard({
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300;
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      onLike(paper.id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onLike(paper);
     }
     lastTap.current = now;
   };
@@ -232,9 +232,12 @@ function PaperCard({
           <View style={styles.footer}>
             <TouchableOpacity 
               style={styles.likeButton} 
-              onPress={() => onLike(paper.id)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                onLike(paper);
+              }}
             >
-              <Text style={styles.likeText}>♥ 0</Text>
+              <Text style={styles.likeText}>♥ {paper.likes || 0}</Text>
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.readButton}
@@ -260,7 +263,8 @@ export default function ExploreScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const { addBookmark, removeBookmark, isBookmarked } = usePapersStore.getState();
+  const [likedPapers, setLikedPapers] = useState<Set<string>>(new Set());
+  const { addBookmark, removeBookmark, isBookmarked, addLike, removeLike, isLiked } = usePapersStore.getState();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -319,6 +323,21 @@ export default function ExploreScreen() {
     return DEFAULT_TOPICS.join(' OR ');
   }, [selectedCategories, debouncedSearchQuery]);
 
+  // Check initial like status for visible papers
+  const checkLikeStatus = useCallback(async (papers: ArxivPaper[]) => {
+    const likeStatuses = await Promise.all(
+      papers.map(paper => isLiked(paper.arxiv_id))
+    );
+    const newLikedPapers = new Set<string>();
+    papers.forEach((paper, index) => {
+      if (likeStatuses[index]) {
+        newLikedPapers.add(paper.arxiv_id);
+      }
+    });
+    setLikedPapers(newLikedPapers);
+  }, [isLiked]);
+
+  // Load initial papers and check their like status
   const loadInitialPapers = async () => {
     try {
       setIsLoading(true);
@@ -327,6 +346,7 @@ export default function ExploreScreen() {
       setPapers(results);
       setStartIndex(PAPERS_PER_PAGE);
       setHasMore(results.length === PAPERS_PER_PAGE);
+      await checkLikeStatus(results);
     } catch (error) {
       console.error('Error loading papers:', error);
     } finally {
@@ -334,6 +354,7 @@ export default function ExploreScreen() {
     }
   };
 
+  // Load more papers and check their like status
   const loadMorePapers = useCallback(async () => {
     if (!hasMore || isLoading) return;
 
@@ -344,12 +365,13 @@ export default function ExploreScreen() {
       setPapers(prev => [...prev, ...results]);
       setStartIndex(prev => prev + PAPERS_PER_PAGE);
       setHasMore(results.length === PAPERS_PER_PAGE);
+      await checkLikeStatus(results);
     } catch (error) {
       console.error('Error loading more papers:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [startIndex, hasMore, isLoading, selectedCategories, debouncedSearchQuery]);
+  }, [startIndex, hasMore, isLoading, selectedCategories, debouncedSearchQuery, checkLikeStatus]);
 
   const handleToggleCategory = useCallback((categoryId: string) => {
     setSelectedCategories(prev => {
@@ -360,9 +382,49 @@ export default function ExploreScreen() {
     });
   }, []);
 
-  const handleLike = useCallback((id: string) => {
-    // TODO: Implement like functionality
-  }, []);
+  const handleLike = useCallback(async (paper: ArxivPaper) => {
+    const isAlreadyLiked = likedPapers.has(paper.arxiv_id);
+
+    if (isAlreadyLiked) {
+      // Remove like
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await removeLike(paper.arxiv_id);
+      // Update local state
+      setLikedPapers(prev => {
+        const next = new Set(prev);
+        next.delete(paper.arxiv_id);
+        return next;
+      });
+      setPapers(prev => prev.map(p => 
+        p.id === paper.id 
+          ? { ...p, likes: Math.max((p.likes || 0) - 1, 0) }
+          : p
+      ));
+    } else {
+      // Add like
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await addLike({
+        id: paper.arxiv_id,
+        title: paper.title,
+        abstract: paper.abstract,
+        authors: paper.authors,
+        year: paper.year,
+        arxiv_id: paper.arxiv_id,
+        categories: paper.categories,
+        likes: 0,
+        bookmarks: 0,
+        links: paper.links,
+        doi: paper.doi,
+      });
+      // Update local state
+      setLikedPapers(prev => new Set([...prev, paper.arxiv_id]));
+      setPapers(prev => prev.map(p => 
+        p.id === paper.id 
+          ? { ...p, likes: (p.likes || 0) + 1 }
+          : p
+      ));
+    }
+  }, [likedPapers, addLike, removeLike]);
 
   const handleSwipeLeft = useCallback((paper: ArxivPaper) => {
     setFocusedPaperId(paper.id);

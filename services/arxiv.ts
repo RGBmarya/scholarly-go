@@ -52,6 +52,8 @@ export interface ArxivPaper {
   arxiv_id: string;
   year: number;
   doi?: string;
+  likes?: number;
+  bookmarks?: number;
 }
 
 export interface PaperData {
