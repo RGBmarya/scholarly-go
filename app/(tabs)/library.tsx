@@ -42,7 +42,7 @@ export default function LibraryScreen() {
         <View style={styles.footer}>
           <TouchableOpacity 
             style={styles.unbookmarkButton} 
-            onPress={() => handleUnbookmark(paper.id)}
+            onPress={() => handleUnbookmark(paper.arxiv_id)}
           >
             <Text style={styles.unbookmarkText}>Remove</Text>
           </TouchableOpacity>

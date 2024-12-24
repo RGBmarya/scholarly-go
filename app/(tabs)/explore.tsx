@@ -431,17 +431,18 @@ export default function ExploreScreen() {
     router.push(`/(chat)/${paper.id}?title=${encodeURIComponent(paper.title)}`);
   }, []);
 
-  const handleSwipeRight = useCallback((paper: ArxivPaper) => {
-    const { isBookmarked: isAlreadyBookmarked } = usePapersStore.getState().isBookmarked(paper.arxiv_id);
+  const handleSwipeRight = useCallback(async (paper: ArxivPaper) => {
+    const { isBookmarked, addBookmark, removeBookmark } = usePapersStore.getState();
+    const { isBookmarked: isAlreadyBookmarked } = await isBookmarked(paper.arxiv_id);
 
     if (isAlreadyBookmarked) {
       // Remove bookmark
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-      removeBookmark(paper.arxiv_id);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await removeBookmark(paper.arxiv_id);
     } else {
       // Add bookmark
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      addBookmark({
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      await addBookmark({
         id: paper.arxiv_id,
         title: paper.title,
         abstract: paper.abstract,

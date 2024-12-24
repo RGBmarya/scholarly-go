@@ -43,7 +43,7 @@ interface PapersState {
   fetchBookmarkedPapers: () => Promise<void>;
   addBookmark: (paper: Paper) => Promise<void>;
   removeBookmark: (arxivId: string) => Promise<void>;
-  isBookmarked: (arxivId: string) => { isBookmarked: boolean; paperId?: string };
+  isBookmarked: (arxivId: string) => Promise<{ isBookmarked: boolean; paperId?: string }>;
   addLike: (paper: Paper) => Promise<void>;
   removeLike: (arxivId: string) => Promise<void>;
   isLiked: (arxivId: string) => Promise<boolean>;
@@ -108,48 +108,76 @@ export const usePapersStore = create<PapersState>((set, get) => ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Generate a UUID for the paper
-      const paperId = uuidv4();
-
-      // First, ensure the paper exists in the papers table
-      const { error: paperError } = await supabase
+      // First, check if the paper already exists
+      const { data: existingPapers, error: findError } = await supabase
         .from('papers')
-        .upsert({
-          id: paperId,  // Use generated UUID instead of arXiv ID
-          title: paper.title,
-          abstract: paper.abstract,
-          authors: paper.authors,
-          year: paper.year,
-          arxiv_id: paper.arxiv_id,  // Keep arXiv ID as a separate field
-          categories: paper.categories,
-          pdf_url: paper.links.pdf,
-          html_url: paper.links.html,
-          doi: paper.doi,
-          bookmarks: 0,
-          likes: 0,
-        });
+        .select('id, bookmarks')
+        .eq('arxiv_id', paper.arxiv_id)
+        .limit(1);
 
-      if (paperError) throw paperError;
+      if (findError) {
+        console.error('Error finding existing paper:', findError);
+        throw findError;
+      }
 
-      // Then create the bookmark
+      let paperId: string;
+      
+      if (!existingPapers || existingPapers.length === 0) {
+        // Paper doesn't exist, create it
+        const newPaperId = uuidv4();
+        const { error: paperError } = await supabase
+          .from('papers')
+          .insert({
+            id: newPaperId,
+            title: paper.title,
+            abstract: paper.abstract,
+            authors: paper.authors,
+            year: paper.year,
+            arxiv_id: paper.arxiv_id,
+            categories: paper.categories,
+            pdf_url: paper.links.pdf,
+            html_url: paper.links.html,
+            doi: paper.doi,
+            bookmarks: 1,  // Start with 1 bookmark
+            likes: 0,
+          });
+
+        if (paperError) {
+          console.error('Error creating paper:', paperError);
+          throw paperError;
+        }
+        paperId = newPaperId;
+        console.log('Created new paper with ID:', paperId);
+      } else {
+        // Paper exists, increment its bookmarks
+        paperId = existingPapers[0].id;
+        const { error: updateError } = await supabase
+          .from('papers')
+          .update({ bookmarks: (existingPapers[0].bookmarks || 0) + 1 })
+          .eq('id', paperId);
+
+        if (updateError) {
+          console.error('Error updating paper bookmarks:', updateError);
+          throw updateError;
+        }
+        console.log('Updated existing paper bookmarks:', existingPapers[0].id);
+      }
+
+      // Create the bookmark entry
       const { error: bookmarkError } = await supabase
         .from('user_bookmarks')
         .insert({
           user_id: user.id,
-          paper_id: paperId,  // Use the generated UUID
+          paper_id: paperId,
         });
 
-      if (bookmarkError) throw bookmarkError;
+      if (bookmarkError) {
+        console.error('Error creating bookmark:', bookmarkError);
+        throw bookmarkError;
+      }
+      console.log('Created bookmark for paper:', paperId);
 
-      // Increment the bookmarks count
-      const { error: updateError } = await supabase
-        .from('papers')
-        .update({ bookmarks: (paper.bookmarks || 0) + 1 })
-        .eq('id', paperId);  // Use the generated UUID
-
-      if (updateError) throw updateError;
-
-      // Refresh the bookmarked papers
+      // Refresh bookmarked papers
       await get().fetchBookmarkedPapers();
     } catch (error) {
       console.error('Error adding bookmark:', error);
@@ -159,56 +187,98 @@ export const usePapersStore = create<PapersState>((set, get) => ({
   removeBookmark: async (arxivId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { paperId } = get().isBookmarked(arxivId);
-      if (!paperId) {
-        console.error('Paper not found in bookmarks');
+      if (!user) {
+        console.log('No user found when trying to remove bookmark');
         return;
       }
 
-      // First get the current paper to check its bookmark count
-      const { data: paper, error: fetchError } = await supabase
-        .from('papers')
-        .select('bookmarks')
-        .eq('id', paperId)
-        .single();
+      console.log(`Attempting to remove bookmark for paper with arXiv ID: ${arxivId}`);
 
-      if (fetchError) throw fetchError;
+      // Find the paper by arXiv ID
+      const { data: papers, error: paperError } = await supabase
+        .from('papers')
+        .select('id, bookmarks')
+        .eq('arxiv_id', arxivId)
+        .limit(1);
+
+      if (paperError) {
+        console.error('Error finding paper:', paperError);
+        throw paperError;
+      }
+      
+      if (!papers || papers.length === 0) {
+        console.log('No paper found with arXiv ID:', arxivId);
+        return;
+      }
+
+      const paper = papers[0];
+      console.log('Found paper:', paper);
 
       // Delete the bookmark
       const { error: bookmarkError } = await supabase
         .from('user_bookmarks')
         .delete()
         .eq('user_id', user.id)
-        .eq('paper_id', paperId);
+        .eq('paper_id', paper.id);
 
-      if (bookmarkError) throw bookmarkError;
+      if (bookmarkError) {
+        console.error('Error deleting bookmark:', bookmarkError);
+        throw bookmarkError;
+      }
 
-      // Decrement the bookmarks count, ensuring it doesn't go below 0
-      const newBookmarks = Math.max((paper?.bookmarks || 0) - 1, 0);
+      // Decrement the bookmarks count
+      const newBookmarks = Math.max((paper.bookmarks || 0) - 1, 0);
       const { error: updateError } = await supabase
         .from('papers')
         .update({ bookmarks: newBookmarks })
-        .eq('id', paperId);
+        .eq('id', paper.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Error updating bookmarks count:', updateError);
+        throw updateError;
+      }
 
       // Update local state
       set(state => ({
-        bookmarkedPapers: state.bookmarkedPapers.filter(p => p.id !== paperId)
+        bookmarkedPapers: state.bookmarkedPapers.filter(p => p.arxiv_id !== arxivId)
       }));
+
+      console.log('Successfully removed bookmark');
     } catch (error) {
       console.error('Error removing bookmark:', error);
     }
   },
 
-  isBookmarked: (arxivId: string) => {
-    const paper = get().bookmarkedPapers.find(paper => paper.arxiv_id === arxivId);
-    return {
-      isBookmarked: Boolean(paper),
-      paperId: paper?.id
-    };
+  isBookmarked: async (arxivId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { isBookmarked: false };
+
+      // Find the paper by arXiv ID
+      const { data: paper, error: paperError } = await supabase
+        .from('papers')
+        .select('id')
+        .eq('arxiv_id', arxivId)
+        .single();
+
+      if (paperError || !paper) return { isBookmarked: false };
+
+      // Check if user has bookmarked this paper
+      const { data: bookmark, error: bookmarkError } = await supabase
+        .from('user_bookmarks')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('paper_id', paper.id)
+        .single();
+
+      return {
+        isBookmarked: Boolean(bookmark),
+        paperId: paper.id
+      };
+    } catch (error) {
+      console.error('Error checking bookmark status:', error);
+      return { isBookmarked: false };
+    }
   },
 
   addLike: async (paper: Paper) => {
