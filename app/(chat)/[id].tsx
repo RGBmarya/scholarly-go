@@ -16,7 +16,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: `Hello! I'm your AI assistant. Ask me anything about "${title}"`,
+      text: `Hello! I will be your AI assistant. Soon, you'll be able to ask me anything about "${title}"`,
       sender: 'ai',
     },
   ]);
@@ -56,7 +56,7 @@ export default function ChatScreen() {
     setTimeout(() => {
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'This is a simulated AI response. In production, this would be replaced with actual AI-generated responses based on the paper content.',
+        text: 'Not so sure about this one, chief. This is a simulated AI response. In production, this would be replaced with actual AI-generated responses based on the paper content.',
         sender: 'ai',
       };
       setMessages(prev => [...prev, aiMessage]);
