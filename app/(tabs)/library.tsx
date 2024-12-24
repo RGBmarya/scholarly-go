@@ -3,6 +3,8 @@ import { useCallback } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { usePapersStore } from '../../store/papers';
+import { Button } from '../../components/ui';
+import { supabase } from '@/lib/supabase/supabase';
 
 export default function LibraryScreen() {
   const { bookmarkedPapers, removeBookmark } = usePapersStore();
@@ -11,6 +13,17 @@ export default function LibraryScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     removeBookmark(paperId);
   }, [removeBookmark]);
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error('Error signing out:', error.message)
+      }
+    }
+  }
 
   const renderPaper = useCallback(({ item: paper }) => (
     <View style={styles.paperCard}>
@@ -43,7 +56,14 @@ export default function LibraryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Library</Text>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>Library</Text>
+          <Button 
+            title="Sign Out" 
+            onPress={handleSignOut}
+            style={styles.signOutButton}
+          />
+        </View>
       </View>
       {bookmarkedPapers.length === 0 ? (
         <View style={styles.emptyState}>
@@ -76,10 +96,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  signOutButton: {
+    backgroundColor: '#FF3B30',
+    minWidth: 100,
   },
   list: {
     padding: 15,
