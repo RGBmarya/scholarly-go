@@ -25,10 +25,22 @@ const PAPERS_PER_PAGE = 10;
 const CATEGORIES = [
   { id: 'cs.AI', label: 'AI' },
   { id: 'cs.LG', label: 'Machine Learning' },
-  { id: 'cs.CL', label: 'Computation & Language' },
   { id: 'cs.CV', label: 'Computer Vision' },
   { id: 'cs.RO', label: 'Robotics' },
-  { id: 'cs.NE', label: 'Neural Networks' },
+  { id: 'cs.CR', label: 'Cryptography' },
+  { id: 'cs.DB', label: 'Databases' },
+  { id: 'physics.app-ph', label: 'Applied Physics' },
+  { id: 'astro-ph', label: 'Astrophysics' },
+  { id: 'cond-mat', label: 'Condensed Matter' },
+  { id: 'math.PR', label: 'Probability' },
+  { id: 'q-bio.BM', label: 'Biomolecules' },
+  { id: 'q-bio.NC', label: 'Neuroscience' },
+  { id: 'q-fin.PM', label: 'Portfolio Mgmt' },
+  { id: 'stat.ML', label: 'Statistics ML' },
+  { id: 'physics.bio-ph', label: 'Biological Physics' },
+  { id: 'math.OC', label: 'Optimization' },
+  { id: 'q-bio.PE', label: 'Population Bio' },
+  { id: 'econ.EM', label: 'Econometrics' },
 ];
 
 const SCREEN_PADDING = {
@@ -40,7 +52,7 @@ const VERTICAL_OFFSET = -80;
 const AVAILABLE_HEIGHT = SCREEN_HEIGHT - SCREEN_PADDING.TOP - SCREEN_PADDING.BOTTOM;
 const CARD_HEIGHT = AVAILABLE_HEIGHT * 0.7;
 const VERTICAL_PADDING = (AVAILABLE_HEIGHT - CARD_HEIGHT) / 2;
-const DEFAULT_TOPICS = ['artificial intelligence', 'machine learning', 'deep learning'];
+const DEFAULT_TOPICS = CATEGORIES.map(category => category.label);
 
 function FilterBar({ 
   selectedCategories,
@@ -293,10 +305,22 @@ export default function ExploreScreen() {
         switch(cat) {
           case 'cs.AI': return 'artificial intelligence';
           case 'cs.LG': return 'machine learning';
-          case 'cs.CL': return 'natural language processing';
           case 'cs.CV': return 'computer vision';
           case 'cs.RO': return 'robotics';
-          case 'cs.NE': return 'neural networks';
+          case 'cs.CR': return 'cryptography OR security';
+          case 'cs.DB': return 'databases';
+          case 'physics.app-ph': return 'applied physics';
+          case 'astro-ph': return 'astrophysics OR astronomy';
+          case 'cond-mat': return 'condensed matter physics';
+          case 'math.PR': return 'probability theory';
+          case 'q-bio.BM': return 'biomolecular structure OR molecular biology';
+          case 'q-bio.NC': return 'computational neuroscience';
+          case 'q-fin.PM': return 'portfolio management OR financial mathematics';
+          case 'stat.ML': return 'statistical machine learning';
+          case 'physics.bio-ph': return 'biological physics OR biophysics';
+          case 'math.OC': return 'optimization OR control theory';
+          case 'q-bio.PE': return 'population biology OR evolution';
+          case 'econ.EM': return 'econometrics OR economic modeling';
           default: return '';
         }
       }).filter(Boolean);
@@ -309,10 +333,22 @@ export default function ExploreScreen() {
         switch(cat) {
           case 'cs.AI': return 'artificial intelligence';
           case 'cs.LG': return 'machine learning';
-          case 'cs.CL': return 'natural language processing';
           case 'cs.CV': return 'computer vision';
           case 'cs.RO': return 'robotics';
-          case 'cs.NE': return 'neural networks';
+          case 'cs.CR': return 'cryptography OR security';
+          case 'cs.DB': return 'databases';
+          case 'physics.app-ph': return 'applied physics';
+          case 'astro-ph': return 'astrophysics OR astronomy';
+          case 'cond-mat': return 'condensed matter physics';
+          case 'math.PR': return 'probability theory';
+          case 'q-bio.BM': return 'biomolecular structure OR molecular biology';
+          case 'q-bio.NC': return 'computational neuroscience';
+          case 'q-fin.PM': return 'portfolio management OR financial mathematics';
+          case 'stat.ML': return 'statistical machine learning';
+          case 'physics.bio-ph': return 'biological physics OR biophysics';
+          case 'math.OC': return 'optimization OR control theory';
+          case 'q-bio.PE': return 'population biology OR evolution';
+          case 'econ.EM': return 'econometrics OR economic modeling';
           default: return '';
         }
       })
