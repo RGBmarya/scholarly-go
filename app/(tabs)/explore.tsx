@@ -260,7 +260,7 @@ export default function ExploreScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const { addBookmark } = usePapersStore();
+  const { addBookmark, removeBookmark, isBookmarked } = usePapersStore.getState();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -370,21 +370,30 @@ export default function ExploreScreen() {
   }, []);
 
   const handleSwipeRight = useCallback((paper: ArxivPaper) => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    addBookmark({
-      id: paper.arxiv_id,
-      title: paper.title,
-      abstract: paper.abstract,
-      authors: paper.authors,
-      year: paper.year,
-      arxiv_id: paper.arxiv_id,
-      categories: paper.categories,
-      likes: 0,
-      bookmarks: 0,
-      links: paper.links,
-      doi: paper.doi,
-    });
-  }, [addBookmark]);
+    const { isBookmarked: isAlreadyBookmarked } = usePapersStore.getState().isBookmarked(paper.arxiv_id);
+
+    if (isAlreadyBookmarked) {
+      // Remove bookmark
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      removeBookmark(paper.arxiv_id);
+    } else {
+      // Add bookmark
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      addBookmark({
+        id: paper.arxiv_id,
+        title: paper.title,
+        abstract: paper.abstract,
+        authors: paper.authors,
+        year: paper.year,
+        arxiv_id: paper.arxiv_id,
+        categories: paper.categories,
+        likes: 0,
+        bookmarks: 0,
+        links: paper.links,
+        doi: paper.doi,
+      });
+    }
+  }, []);
 
   const onViewableItemsChanged = useCallback(({ changed }: { 
     changed: ViewToken[] 

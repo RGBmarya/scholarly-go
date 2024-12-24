@@ -42,7 +42,8 @@ interface PapersState {
   bookmarkedPapers: Paper[];
   fetchBookmarkedPapers: () => Promise<void>;
   addBookmark: (paper: Paper) => Promise<void>;
-  removeBookmark: (paperId: string) => Promise<void>;
+  removeBookmark: (arxivId: string) => Promise<void>;
+  isBookmarked: (arxivId: string) => { isBookmarked: boolean; paperId?: string };
 }
 
 export const usePapersStore = create<PapersState>((set, get) => ({
@@ -152,10 +153,16 @@ export const usePapersStore = create<PapersState>((set, get) => ({
     }
   },
 
-  removeBookmark: async (paperId: string) => {
+  removeBookmark: async (arxivId: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      const { paperId } = get().isBookmarked(arxivId);
+      if (!paperId) {
+        console.error('Paper not found in bookmarks');
+        return;
+      }
 
       // First get the current paper to check its bookmark count
       const { data: paper, error: fetchError } = await supabase
@@ -191,5 +198,13 @@ export const usePapersStore = create<PapersState>((set, get) => ({
     } catch (error) {
       console.error('Error removing bookmark:', error);
     }
+  },
+
+  isBookmarked: (arxivId: string) => {
+    const paper = get().bookmarkedPapers.find(paper => paper.arxiv_id === arxivId);
+    return {
+      isBookmarked: Boolean(paper),
+      paperId: paper?.id
+    };
   },
 })); 
