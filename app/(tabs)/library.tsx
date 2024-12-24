@@ -1,5 +1,5 @@
 import { View, StyleSheet, FlatList, Text, TouchableOpacity, Linking } from 'react-native';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { usePapersStore } from '../../store/papers';
@@ -7,7 +7,11 @@ import { Button } from '../../components/ui';
 import { supabase } from '@/lib/supabase/supabase';
 
 export default function LibraryScreen() {
-  const { bookmarkedPapers, removeBookmark } = usePapersStore();
+  const { bookmarkedPapers, removeBookmark, fetchBookmarkedPapers } = usePapersStore();
+
+  useEffect(() => {
+    fetchBookmarkedPapers();
+  }, [fetchBookmarkedPapers]);
 
   const handleUnbookmark = useCallback((paperId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);

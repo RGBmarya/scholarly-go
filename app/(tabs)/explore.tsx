@@ -12,8 +12,8 @@ import {
   GestureDetector,
   GestureHandlerRootView,
 } from 'react-native-gesture-handler';
-import { router, useNavigation } from 'expo-router';
-import { searchArxiv, transformArxivToPaperData, PaperData } from '../../services/arxiv';
+import { router } from 'expo-router';
+import { searchArxiv, ArxivPaper } from '../../services/arxiv';
 import * as Haptics from 'expo-haptics';
 import { usePapersStore } from '../../store/papers';
 
@@ -21,7 +21,6 @@ const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 100;
 const VERTICAL_SWIPE_THRESHOLD = 50;
 const PAPERS_PER_PAGE = 10;
-const BOTTOM_TAB_HEIGHT = 49;
 
 const CATEGORIES = [
   { id: 'cs.AI', label: 'AI' },
@@ -101,7 +100,7 @@ function PaperCard({
   isFocused,
   onVerticalSwipe
 }: { 
-  paper: PaperData; 
+  paper: ArxivPaper; 
   onLike: (id: string) => void;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
@@ -156,9 +155,9 @@ function PaperCard({
         translateY.value = withSpring(0);
       } else {
         if (event.translationX > SWIPE_THRESHOLD) {
-          translateX.value = withSpring(0);
-          translateY.value = withSpring(0);
           runOnJS(onSwipeRight)();
+          translateX.value = withSpring(0, { damping: 15 });
+          translateY.value = withSpring(0, { damping: 15 });
         } else if (event.translationX < -SWIPE_THRESHOLD) {
           translateX.value = withSpring(-SCREEN_WIDTH);
           isLocked.value = true;
@@ -207,23 +206,8 @@ function PaperCard({
     ),
   }));
 
-  const formatAuthors = (authors: string[]) => {
-    if (authors.length <= 2) return authors.join(', ');
-    return `${authors[0]} et al.`;
-  };
-
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text;
-    return text.slice(0, maxLength).trim() + '...';
-  };
-
   return (
     <View style={styles.paperContainer}>
-      {paper.bookmarked && (
-        <View style={styles.cornerBookmark}>
-          <Text style={styles.cornerBookmarkText}>🔖</Text>
-        </View>
-      )}
       <Animated.View style={[styles.swipeIndicator, styles.bookmarkIndicator, rBookmarkStyle]}>
         <Text style={styles.swipeIndicatorText}>🔖</Text>
       </Animated.View>
@@ -234,40 +218,30 @@ function PaperCard({
         <Animated.View style={[styles.paperContent, rStyle]}>
           <View style={styles.titleContainer}>
             <Text style={styles.title} numberOfLines={2}>
-              {truncateText(paper.title, 100)}
+              {paper.title}
             </Text>
             <Text style={styles.authors} numberOfLines={1}>
-              {formatAuthors(paper.authors)} • {paper.year}
+              {paper.authors.length > 2 
+                ? `${paper.authors[0]} et al.` 
+                : paper.authors.join(', ')} • {paper.year}
             </Text>
           </View>
           <Text style={styles.abstract} numberOfLines={12}>
-            {truncateText(paper.abstract, 800)}
+            {paper.abstract}
           </Text>
           <View style={styles.footer}>
             <TouchableOpacity 
-              style={[
-                styles.likeButton,
-                paper.isLikedByUser && styles.likeButtonActive
-              ]} 
+              style={styles.likeButton} 
               onPress={() => onLike(paper.id)}
             >
-              <Text style={[
-                styles.likeText,
-                paper.isLikedByUser && styles.likeTextActive
-              ]}>♥ {paper.likes}</Text>
+              <Text style={styles.likeText}>♥ 0</Text>
             </TouchableOpacity>
-            <View style={styles.footerRight}>
-              {paper.bookmarked && (
-                <Text style={styles.bookmarkIndicatorText}>🔖</Text>
-              )}
-              <TouchableOpacity 
-                style={styles.readButton}
-                onPress={() => paper.links.html && Linking.openURL(paper.links.html)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Text style={styles.readButtonText}>Read</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity 
+              style={styles.readButton}
+              onPress={() => paper.links.html && Linking.openURL(paper.links.html)}
+            >
+              <Text style={styles.readButtonText}>Read</Text>
+            </TouchableOpacity>
           </View>
         </Animated.View>
       </GestureDetector>
@@ -276,18 +250,17 @@ function PaperCard({
 }
 
 export default function ExploreScreen() {
-  const [papers, setPapers] = useState<PaperData[]>([]);
+  const [papers, setPapers] = useState<ArxivPaper[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [visibleItems, setVisibleItems] = useState<string[]>([]);
   const [focusedPaperId, setFocusedPaperId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [startIndex, setStartIndex] = useState(0);
   const [hasMore, setHasMore] = useState(true);
-  const navigation = useNavigation();
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const { addBookmark, removeBookmark, isBookmarked } = usePapersStore();
+  const { addBookmark } = usePapersStore();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -350,11 +323,10 @@ export default function ExploreScreen() {
     try {
       setIsLoading(true);
       const query = buildSearchQuery();
-      const arxivPapers = await searchArxiv(query, 0, PAPERS_PER_PAGE);
-      const transformedPapers = arxivPapers.map(transformArxivToPaperData);
-      setPapers(transformedPapers);
+      const results = await searchArxiv(query, 0, PAPERS_PER_PAGE);
+      setPapers(results);
       setStartIndex(PAPERS_PER_PAGE);
-      setHasMore(arxivPapers.length === PAPERS_PER_PAGE);
+      setHasMore(results.length === PAPERS_PER_PAGE);
     } catch (error) {
       console.error('Error loading papers:', error);
     } finally {
@@ -368,18 +340,16 @@ export default function ExploreScreen() {
     try {
       setIsLoading(true);
       const query = buildSearchQuery();
-      const arxivPapers = await searchArxiv(query, startIndex, PAPERS_PER_PAGE);
-      const transformedPapers = arxivPapers.map(transformArxivToPaperData);
-      
-      setPapers(prev => [...prev, ...transformedPapers]);
+      const results = await searchArxiv(query, startIndex, PAPERS_PER_PAGE);
+      setPapers(prev => [...prev, ...results]);
       setStartIndex(prev => prev + PAPERS_PER_PAGE);
-      setHasMore(arxivPapers.length === PAPERS_PER_PAGE);
+      setHasMore(results.length === PAPERS_PER_PAGE);
     } catch (error) {
       console.error('Error loading more papers:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [startIndex, hasMore, isLoading, selectedCategories, searchQuery]);
+  }, [startIndex, hasMore, isLoading, selectedCategories, debouncedSearchQuery]);
 
   const handleToggleCategory = useCallback((categoryId: string) => {
     setSelectedCategories(prev => {
@@ -390,50 +360,31 @@ export default function ExploreScreen() {
     });
   }, []);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (focusedPaperId) {
-        setFocusedPaperId(null);
-      }
-    });
-    return unsubscribe;
-  }, [focusedPaperId, navigation]);
-
   const handleLike = useCallback((id: string) => {
-    setPapers(prevPapers => 
-      prevPapers.map(paper => 
-        paper.id === id 
-          ? { 
-              ...paper, 
-              likes: paper.isLikedByUser ? paper.likes - 1 : paper.likes + 1,
-              isLikedByUser: !paper.isLikedByUser
-            }
-          : paper
-      )
-    );
+    // TODO: Implement like functionality
   }, []);
 
-  const handleSwipeLeft = useCallback((paper: PaperData) => {
+  const handleSwipeLeft = useCallback((paper: ArxivPaper) => {
     setFocusedPaperId(paper.id);
     router.push(`/(chat)/${paper.id}?title=${encodeURIComponent(paper.title)}`);
   }, []);
 
-  const handleSwipeRight = useCallback((paper: PaperData) => {
-    if (isBookmarked(paper.id)) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      removeBookmark(paper.id);
-    } else {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      addBookmark(paper);
-    }
-    setPapers(prevPapers =>
-      prevPapers.map(p =>
-        p.id === paper.id
-          ? { ...p, bookmarked: !p.bookmarked }
-          : p
-      )
-    );
-  }, [addBookmark, removeBookmark, isBookmarked]);
+  const handleSwipeRight = useCallback((paper: ArxivPaper) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    addBookmark({
+      id: paper.arxiv_id,
+      title: paper.title,
+      abstract: paper.abstract,
+      authors: paper.authors,
+      year: paper.year,
+      arxiv_id: paper.arxiv_id,
+      categories: paper.categories,
+      likes: 0,
+      bookmarks: 0,
+      links: paper.links,
+      doi: paper.doi,
+    });
+  }, [addBookmark]);
 
   const onViewableItemsChanged = useCallback(({ changed }: { 
     changed: ViewToken[] 
@@ -486,7 +437,7 @@ export default function ExploreScreen() {
     }
   }, [currentIndex, papers.length]);
 
-  const flatListRef = useRef<Animated.FlatList<PaperData>>(null);
+  const flatListRef = useRef<Animated.FlatList<ArxivPaper>>(null);
 
   if (isLoading && papers.length === 0) {
     return (
@@ -582,17 +533,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-  cornerBookmark: {
-    position: 'absolute',
-    top: VERTICAL_PADDING + VERTICAL_OFFSET,
-    right: 25,
-    zIndex: 2,
-    transform: [{ translateY: -10 }],
-  },
-  cornerBookmarkText: {
-    fontSize: 24,
-    transform: [{ rotate: '0deg' }],
-  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
@@ -627,15 +567,9 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
   },
-  likeButtonActive: {
-    backgroundColor: '#ffebee',
-  },
   likeText: {
     fontSize: 20,
     color: '#ff4d4d',
-  },
-  likeTextActive: {
-    color: '#f44336',
   },
   readButton: {
     backgroundColor: '#007AFF',
@@ -657,11 +591,11 @@ const styles = StyleSheet.create({
     transform: [{ translateY: VERTICAL_OFFSET }],
   },
   bookmarkIndicator: {
-    right: 40,
+    left: 40,
     backgroundColor: '#4CAF50',
   },
   chatIndicator: {
-    left: 40,
+    right: 40,
     backgroundColor: '#2196F3',
   },
   swipeIndicatorText: {
@@ -717,13 +651,5 @@ const styles = StyleSheet.create({
   },
   categoryLabelSelected: {
     color: 'white',
-  },
-  footerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  bookmarkIndicatorText: {
-    fontSize: 18,
   },
 });

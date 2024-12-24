@@ -221,10 +221,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   signInButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#666666',
   },
   signUpButton: {
-    backgroundColor: '#34C759',
+    backgroundColor: '#666666',
   },
   googleButton: {
     backgroundColor: '#DB4437',

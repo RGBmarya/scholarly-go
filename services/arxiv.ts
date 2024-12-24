@@ -49,6 +49,9 @@ export interface ArxivPaper {
     pdf?: string;
     html?: string;
   };
+  arxiv_id: string;
+  year: number;
+  doi?: string;
 }
 
 export interface PaperData {
@@ -211,7 +214,10 @@ export async function searchArxiv(query: string = '', start: number = 0, maxResu
           published,
           updated,
           categories: uniqueCategories.length > 0 ? uniqueCategories : ['uncategorized'],
-          links
+          links,
+          arxiv_id: arxivId,
+          year: new Date(published).getFullYear(),
+          doi: undefined // arXiv API doesn't provide DOI directly
         };
       });
   } catch (error) {
