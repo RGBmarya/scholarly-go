@@ -123,7 +123,7 @@ function PaperCard({
 
   const handleDoubleTap = () => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
+    const DOUBLE_TAP_DELAY = 250;
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onLike(paper);
