@@ -65,7 +65,7 @@ export default function Auth() {
     })
 
     if (error) Alert.alert(error.message)
-    if (!session) Alert.alert('Please check your inbox for email verification!')
+    else if (!session) Alert.alert('Please check your inbox for email verification!')
     setLoading(false)
   }
 
@@ -161,18 +161,6 @@ export default function Auth() {
               disabled={loading} 
               onPress={signUpWithEmail}
               style={styles.signUpButton}
-            />
-            <Button 
-              title="Continue with Google" 
-              disabled={loading} 
-              onPress={signInWithGoogle}
-              style={styles.googleButton}
-            />
-            <Button 
-              title="Send Magic Link" 
-              disabled={loading} 
-              onPress={sendMagicLink}
-              style={styles.magicLinkButton}
             />
           </View>
         </View>
